@@ -93,7 +93,6 @@
 
     <h1>File Generator</h1>
 
-    <!-- Step 1: Upload CSV -->
     <form id="uploadForm" enctype="multipart/form-data">
         <label for="file">Choose a CSV file:</label>
         <input type="file" id="file" name="file" accept=".csv">
@@ -105,7 +104,6 @@
         <p>Processing...</p>
     </div>
 
-    <!-- Step 2: Client Details -->
     <div id="userInputs" style="margin-top: 20px;" class="hidden">
         <h2>Step 2: Provide Details</h2>
 
@@ -120,7 +118,6 @@
         </select><br>
     </div>
 
-    <!-- Step 3: Column Mapping -->
     <h2 class="hidden" id="columnMappingHeader">Step 3: Column Mapping</h2>
     <div id="columnMapping">
         <table id="columnTable" class="hidden">
@@ -132,12 +129,10 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Dynamically populated rows -->
             </tbody>
         </table>
     </div>
 
-    <!-- Step 4: Download and Reset -->
     <div id="downloadSection" class="hidden">
         <h2>Step 4: Download Files</h2>
         <button id="generateFiles">Generate Files</button>
@@ -147,20 +142,15 @@
     <script>
         let columnsData = [];
         let uploadedFileName = '';
-        let currentFolder = '';
-        let zipUrl = '';  // Variable to store the download URL
 
-        // Handle file upload
         $("#uploadForm").on("submit", function (event) {
             event.preventDefault();
-
             $("#loader").show();
 
             const formData = new FormData();
             const file = document.getElementById('file').files[0];
             formData.append('file', file);
 
-            // Send the file to the backend to extract columns
             $.ajax({
                 url: '/upload_csv',
                 method: 'POST',
@@ -172,28 +162,28 @@
                     if (response.columns) {
                         uploadedFileName = response.fileName;
 
-                        columnsData = response.columns.map(col => ({
-                            csv_name: col,
-                            clevertap_name: col, // Pre-fill with csv_name by default
-                            type: 'string' // Default type
-                        }));
+                        columnsData = response.columns
+                            .filter(col => col.trim()) // Remove empty columns
+                            .map(col => ({
+                                csv_name: col,
+                                clevertap_name: col,
+                                type: 'string'
+                            }));
 
-                        // Show form for client details and column mapping
                         $("#userInputs").removeClass("hidden");
                         $("#columnMappingHeader").removeClass("hidden");
 
-                        // Dynamically populate the column mapping UI as a table
                         let tableHTML = '';
                         columnsData.forEach((column, index) => {
                             tableHTML += `
                                 <tr>
                                     <td>${column.csv_name}</td>
-                                    <td><input type="text" id="clevertap_name_${index}" name="clevertap_name_${index}" value="${column.clevertap_name}" placeholder="Enter Clevertap Name"></td>
+                                    <td><input type="text" id="clevertap_name_${index}" value="${column.clevertap_name}"></td>
                                     <td>
-                                        <select id="type_${index}" name="type_${index}">
-                                            <option value="string" ${column.type === 'string' ? 'selected' : ''}>String</option>
-                                            <option value="integer" ${column.type === 'integer' ? 'selected' : ''}>Integer</option>
-                                            <option value="boolean" ${column.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+                                        <select id="type_${index}">
+                                            <option value="string">String</option>
+                                            <option value="integer">Integer</option>
+                                            <option value="boolean">Boolean</option>
                                         </select>
                                     </td>
                                 </tr>
@@ -204,77 +194,25 @@
                         $("#columnTable").removeClass("hidden");
                     }
                 },
-                error: function (error) {
-                    console.error("File upload error:", error);
+                error: function () {
+                    alert("Failed to upload CSV.");
                     $("#loader").hide();
                 }
             });
         });
 
-        // Handle type-specific changes
-        $("#dataType").on("change", function () {
-            const dataType = $(this).val();
-            if (dataType === "event") {
-                // Add 'event_name' column if type is event
-                if (!columnsData.some(col => col.csv_name === "event_name")) {
-                    columnsData.unshift({
-                        csv_name: 'event_name',
-                        clevertap_name: 'evtName',
-                        type: 'string'
-                    });
-                }
-            } else {
-                // Remove 'event_name' column if type is profile
-                columnsData = columnsData.filter(col => col.csv_name !== "event_name");
-            }
-
-            // Update column table
-            let tableHTML = '';
-            columnsData.forEach((column, index) => {
-                tableHTML += `
-                    <tr>
-                        <td>${column.csv_name}</td>
-                        <td><input type="text" id="clevertap_name_${index}" name="clevertap_name_${index}" value="${column.clevertap_name}" placeholder="Enter Clevertap Name"></td>
-                        <td>
-                            <select id="type_${index}" name="type_${index}">
-                                <option value="string" ${column.type === 'string' ? 'selected' : ''}>String</option>
-                                <option value="integer" ${column.type === 'integer' ? 'selected' : ''}>Integer</option>
-                                <option value="boolean" ${column.type === 'boolean' ? 'selected' : ''}>Boolean</option>
-                            </select>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            $("#columnTable tbody").html(tableHTML);
-        });
-
-        // Collect user inputs and generate files
-        function generateFiles() {
+        $("#generateFiles").on("click", function () {
             $("#loader").show();
 
-            // Collect all column mapping values
-            columnsData.forEach((column, index) => {
-                column.clevertap_name = $(`#clevertap_name_${index}`).val();
-                column.type = $(`#type_${index}`).val();
+            columnsData.forEach((col, i) => {
+                col.clevertap_name = $(`#clevertap_name_${i}`).val();
+                col.type = $(`#type_${i}`).val();
             });
-
-            // Collect additional user inputs
-            const clientEmail = $("#clientEmail").val();
-            const dataType = $("#dataType").val();
-            const eventName = dataType === "event" ? $("#clevertap_name_0").val() : null;
-
-            if (!clientEmail || !dataType) {
-                alert("Please fill out all required fields.");
-                $("#loader").hide();
-                return;
-            }
 
             const data = {
                 columns: columnsData,
-                clientEmail: clientEmail,
-                type: dataType,
-                event_name: eventName,
+                clientEmail: $("#clientEmail").val(),
+                type: $("#dataType").val(),
                 fileName: uploadedFileName
             };
 
@@ -283,32 +221,17 @@
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(data),
-                success: function (response) {
+                success: function (res) {
                     $("#loader").hide();
-                    if (response.zip_url) {
-                        zipUrl = response.zip_url;
-                        $("#generateFiles").text("Download Files");
-                        $("#generateFiles").attr('href', zipUrl).removeClass("hidden");
-                    }
+                    window.location.href = res.zip_url;
                 },
-                error: function (error) {
-                    console.error("Error generating manifest:", error);
+                error: function () {
                     alert("Failed to generate manifest.");
                     $("#loader").hide();
                 }
             });
-        }
-
-        // Handle Generate Files button click
-        $("#generateFiles").on("click", function () {
-            if (zipUrl) {
-                window.location.href = zipUrl;
-            } else {
-                generateFiles();
-            }
         });
 
-        // Reset button handler
         $("#resetUI").on("click", function () {
             location.reload();
         });
@@ -316,3 +239,4 @@
 
 </body>
 </html>
+asdadads

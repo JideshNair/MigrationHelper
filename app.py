@@ -71,8 +71,8 @@ def generate_manifest():
         "fileName": f"{csv_file_prefix}.csv",  # CSV filename will use the prefix
         "type": data["type"],
         "columns": {col['csv_name']: {
-                        'ctName': col['clevertap_name'],
-                        'dataType': col['type'].upper()
+                        'clevertap_name': col['clevertap_name'],
+                        'data_type': col['type'].lower()
                     } for col in columns},
         "clientEmail": client_email
     }
@@ -88,8 +88,16 @@ def generate_manifest():
         return jsonify({'error': f'Failed to read CSV: {str(e)}'}), 400
 
     # Add 'event_name' column if it's event type
-    if data["type"] == "event":
+    if data["type"] == "event" and 'event_name' not in df.columns:
         df['event_name'] = event_name
+
+    # Map column names based on user inputs
+    column_mapping = {col['csv_name']: col['clevertap_name'] for col in columns}
+    df.rename(columns=column_mapping, inplace=True)
+
+    # Add the event name to the selected event column
+    if data["type"] == "event" and event_name in df.columns:
+        df['event_name'] = df[event_name]  # Event column is selected by the user
 
     # Save the modified CSV with the new filename
     modified_csv_filename = f"{csv_file_prefix}.csv"
@@ -107,7 +115,6 @@ def generate_manifest():
         'csv_url': f"/download/{folder_name}/{modified_csv_filename}",
         'zip_url': f"/download/{folder_name}.zip"
     })
-
 
 @app.route('/download/<path:filename>', methods=['GET'])
 def download_file(filename):

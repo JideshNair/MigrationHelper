@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV to Manifest</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            color: #333;
+        }
+
+        h1, h2 {
+            color: #4CAF50;
+        }
+
+        input, select, button {
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #loader {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            text-align: center;
+            padding-top: 200px;
+        }
+
+        #loader img {
+            width: 50px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        table tr:hover {
+            background-color: #ddd;
+        }
+
+        #downloadSection button {
+            margin: 5px 0;
+            background-color: #007BFF;
+        }
+
+        #downloadSection button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>File Generator</h1>
+
+    <!-- Step 1: Upload CSV -->
+    <form id="uploadForm" enctype="multipart/form-data">
+        <label for="file">Choose a CSV file:</label>
+        <input type="file" id="file" name="file" accept=".csv">
+        <button type="submit">Upload CSV</button>
+    </form>
+
+    <div id="loader">
+        <img src="https://i.gifer.com/ZZ5H.gif" alt="Loading...">
+        <p>Processing...</p>
+    </div>
+
+    <!-- Step 2: Client Details -->
+    <div id="userInputs" style="margin-top: 20px;" class="hidden">
+        <h2>Step 2: Provide Details</h2>
+
+        <label for="clientEmail">Client Email:</label>
+        <input type="email" id="clientEmail" placeholder="Enter Client Email" required /><br>
+
+        <label for="dataType">Type:</label>
+        <select id="dataType" required>
+            <option value="" disabled selected>Select Type</option>
+            <option value="event">Event</option>
+            <option value="profile">Profile</option>
+        </select><br>
+    </div>
+
+    <!-- Step 3: Column Mapping -->
+    <h2 class="hidden" id="columnMappingHeader">Step 3: Column Mapping</h2>
+    <div id="columnMapping">
+        <table id="columnTable" class="hidden">
+            <thead>
+                <tr>
+                    <th>CSV Column</th>
+                    <th>Clevertap Name</th>
+                    <th>Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dynamically populated rows -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Step 4: Download and Reset -->
+    <div id="downloadSection" class="hidden">
+        <h2>Step 4: Download Files</h2>
+        <button id="generateFiles">Generate Files</button>
+        <button id="resetUI" style="background-color: #FF0000;">Reset</button>
+    </div>
+
+    <script>
+        let columnsData = [];
+        let uploadedFileName = '';
+        let currentFolder = '';
+        let zipUrl = '';  // Variable to store the download URL
+
+        // Handle file upload
+        $("#uploadForm").on("submit", function (event) {
+            event.preventDefault();
+
+            $("#loader").show();
+
+            const formData = new FormData();
+            const file = document.getElementById('file').files[0];
+            formData.append('file', file);
+
+            // Send the file to the backend to extract columns
+            $.ajax({
+                url: '/upload_csv',
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    $("#loader").hide();
+                    if (response.columns) {
+                        uploadedFileName = response.fileName;
+
+                        columnsData = response.columns.map(col => ({
+                            csv_name: col,
+                            clevertap_name: col, // Pre-fill with csv_name by default
+                            type: 'string' // Default type
+                        }));
+
+                        // Show form for client details and column mapping
+                        $("#userInputs").removeClass("hidden");
+                        $("#columnMappingHeader").removeClass("hidden");
+
+                        // Dynamically populate the column mapping UI as a table
+                        let tableHTML = '';
+                        columnsData.forEach((column, index) => {
+                            tableHTML += `
+                                <tr>
+                                    <td>${column.csv_name}</td>
+                                    <td><input type="text" id="clevertap_name_${index}" name="clevertap_name_${index}" value="${column.clevertap_name}" placeholder="Enter Clevertap Name"></td>
+                                    <td>
+                                        <select id="type_${index}" name="type_${index}">
+                                            <option value="string" ${column.type === 'string' ? 'selected' : ''}>String</option>
+                                            <option value="integer" ${column.type === 'integer' ? 'selected' : ''}>Integer</option>
+                                            <option value="boolean" ${column.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+
+                        $("#columnTable tbody").html(tableHTML);
+                        $("#columnTable").removeClass("hidden");
+                    }
+                },
+                error: function (error) {
+                    console.error("File upload error:", error);
+                    $("#loader").hide();
+                }
+            });
+        });
+
+        // Handle type-specific changes
+        $("#dataType").on("change", function () {
+            const dataType = $(this).val();
+            if (dataType === "event") {
+                // Add 'event_name' column if type is event
+                if (!columnsData.some(col => col.csv_name === "event_name")) {
+                    columnsData.unshift({
+                        csv_name: 'event_name',
+                        clevertap_name: 'evtName',
+                        type: 'string'
+                    });
+                }
+            } else {
+                // Remove 'event_name' column if type is profile
+                columnsData = columnsData.filter(col => col.csv_name !== "event_name");
+            }
+
+            // Update column table
+            let tableHTML = '';
+            columnsData.forEach((column, index) => {
+                tableHTML += `
+                    <tr>
+                        <td>${column.csv_name}</td>
+                        <td><input type="text" id="clevertap_name_${index}" name="clevertap_name_${index}" value="${column.clevertap_name}" placeholder="Enter Clevertap Name"></td>
+                        <td>
+                            <select id="type_${index}" name="type_${index}">
+                                <option value="string" ${column.type === 'string' ? 'selected' : ''}>String</option>
+                                <option value="integer" ${column.type === 'integer' ? 'selected' : ''}>Integer</option>
+                                <option value="boolean" ${column.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $("#columnTable tbody").html(tableHTML);
+        });
+
+        // Collect user inputs and generate files
+        function generateFiles() {
+            $("#loader").show();
+
+            // Collect all column mapping values
+            columnsData.forEach((column, index) => {
+                column.clevertap_name = $(`#clevertap_name_${index}`).val();
+                column.type = $(`#type_${index}`).val();
+            });
+
+            // Collect additional user inputs
+            const clientEmail = $("#clientEmail").val();
+            const dataType = $("#dataType").val();
+            const eventName = dataType === "event" ? $("#clevertap_name_0").val() : null;
+
+            if (!clientEmail || !dataType) {
+                alert("Please fill out all required fields.");
+                $("#loader").hide();
+                return;
+            }
+
+            const data = {
+                columns: columnsData,
+                clientEmail: clientEmail,
+                type: dataType,
+                event_name: eventName,
+                fileName: uploadedFileName
+            };
+
+            $.ajax({
+                url: '/generate_manifest',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (response) {
+                    $("#loader").hide();
+                    if (response.zip_url) {
+                        zipUrl = response.zip_url;
+                        $("#generateFiles").text("Download Files");
+                        $("#generateFiles").attr('href', zipUrl).removeClass("hidden");
+                    }
+                },
+                error: function (error) {
+                    console.error("Error generating manifest:", error);
+                    alert("Failed to generate manifest.");
+                    $("#loader").hide();
+                }
+            });
+        }
+
+        // Handle Generate Files button click
+        $("#generateFiles").on("click", function () {
+            if (zipUrl) {
+                window.location.href = zipUrl;
+            } else {
+                generateFiles();
+            }
+        });
+
+        // Reset button handler
+        $("#resetUI").on("click", function () {
+            location.reload();
+        });
+    </script>
+
+</body>
+</html>

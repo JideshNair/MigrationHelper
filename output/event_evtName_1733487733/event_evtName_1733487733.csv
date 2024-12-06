@@ -1,0 +1,11 @@
+Event,prop_1,prop_2,prop_3,prop_4,identity,event_name
+Event1,prop1,prop2,prop3,prop4,1,evtName
+Event2,prop1,,prop3,prop4,2,evtName
+Event3,prop1,prop2,prop3,prop4,3,evtName
+Event4,prop1,prop2,prop3,,4,evtName
+Event5,prop1,prop2,,prop4,5,evtName
+Event1,prop1,prop2,prop3,prop4,6,evtName
+Event2,prop1,,prop3,prop4,7,evtName
+Event3,prop1,prop2,prop3,prop4,8,evtName
+Event4,prop1,prop2,prop3,prop4,9,evtName
+Event5,prop1,prop2,,prop4,10,evtName

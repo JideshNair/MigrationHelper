@@ -1,0 +1,31 @@
+{
+    "fileName": "profile_1733487762.csv",
+    "type": "profile",
+    "columns": {
+        "Event": {
+            "ctName": "Event",
+            "dataType": "STRING"
+        },
+        "prop_1": {
+            "ctName": "prop_1",
+            "dataType": "STRING"
+        },
+        "prop_2": {
+            "ctName": "prop_2",
+            "dataType": "STRING"
+        },
+        "prop_3": {
+            "ctName": "prop_3",
+            "dataType": "STRING"
+        },
+        "prop_4": {
+            "ctName": "prop_4",
+            "dataType": "STRING"
+        },
+        "identity": {
+            "ctName": "identity",
+            "dataType": "STRING"
+        }
+    },
+    "clientEmail": "sdsdsd"
+}

@@ -91,12 +91,12 @@
 </head>
 <body>
 
-    <h1>File Generator</h1>
+    <h1>Multiple Events or Profiles in csv Generator</h1>
 
     <!-- Step 1: Upload CSV -->
     <form id="uploadForm" enctype="multipart/form-data">
         <label for="file">Choose a CSV file:</label>
-        <input type="file" id="file" name="file" accept=".csv">
+        <input type="file" id="file" name="file" accept=".csv, .json">
         <button type="submit">Upload CSV</button>
     </form>
 
@@ -215,14 +215,7 @@
         $("#dataType").on("change", function () {
             const dataType = $(this).val();
             if (dataType === "event") {
-                // Add 'event_name' column if type is event
-                if (!columnsData.some(col => col.csv_name === "event_name")) {
-                    columnsData.unshift({
-                        csv_name: 'event_name',
-                        clevertap_name: 'evtName',
-                        type: 'string'
-                    });
-                }
+                columnsData = columnsData.filter(col => col.csv_name !== "event_name");
             } else {
                 // Remove 'event_name' column if type is profile
                 columnsData = columnsData.filter(col => col.csv_name !== "event_name");
@@ -262,7 +255,9 @@
             // Collect additional user inputs
             const clientEmail = $("#clientEmail").val();
             const dataType = $("#dataType").val();
-            const eventName = dataType === "event" ? $("#clevertap_name_0").val() : null;
+            const eventName = dataType === "event" 
+    ? (columnsData.find(col => col.clevertap_name === "evtName")?.csv_name || "value") 
+    : null;
 
             if (!clientEmail || !dataType) {
                 alert("Please fill out all required fields.");

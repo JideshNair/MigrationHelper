@@ -45,10 +45,18 @@ def generate_image_from_replicate(prompt):
                 "num_inference_steps": 28
             }
         )
-        logger.info(f"Replicate API response: {output}")
-        return output  # The URL of the generated image
+
+        # Assuming the output is a list of FileOutput objects, extract the URL
+        if output:
+            image_url = output[0].url  # Extract the URL from the FileOutput object
+            logger.info(f"Replicate API returned image URL: {image_url}")
+            return image_url  # Return the URL
+        else:
+            logger.error("Replicate API returned no output.")
+            return None
+
     except Exception as e:
-        logger.error(f"Error calling Flux LoRA API: {e}")
+        logger.error(f"Error calling Replicate API: {e}")
         return None
 
 @app.route("/slack/events", methods=["POST"])
@@ -75,6 +83,11 @@ def slack_events():
             logger.info("Ignoring bot's own message.")
             return jsonify({"status": "ok"})  # Don't respond if the message is from the bot
 
+        # Ignore messages from the bot user
+        if user == client.auth_test()['user_id']:
+            logger.info(f"Ignoring message from bot itself (user_id: {user}).")
+            return jsonify({"status": "ok"})  # Skip if the bot's own message
+
         if user_message:
             logger.info(f"Received user message: {user_message}")
             
@@ -94,7 +107,6 @@ def slack_events():
                     return jsonify({"error": f"Slack API error: {e.response['error']}"})
 
     return jsonify({"status": "ok"})
-
 
 # Run the Flask app (on Render, this will be handled by Gunicorn)
 if __name__ == "__main__":

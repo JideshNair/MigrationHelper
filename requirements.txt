@@ -1,4 +1,5 @@
-slack_sdk==3.11.2
 flask==2.1.2
+slack_sdk==3.11.2
 gunicorn==20.1.0
-werkzeug==2.1.2
+replicate==0.3.1
+requests==2.26.0

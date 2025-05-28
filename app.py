@@ -83,6 +83,11 @@ def slack_events():
             logger.info("Ignoring bot's own message.")
             return jsonify({"status": "ok"})  # Don't respond if the message is from the bot
 
+        # Ignore edited messages (subtype: 'message_changed')
+        if event.get("subtype") == "message_changed":
+            logger.info("Ignoring edited message.")
+            return jsonify({"status": "ok"})  # Don't respond to message changes
+
         # Ignore messages from the bot user
         if user == client.auth_test()['user_id']:
             logger.info(f"Ignoring message from bot itself (user_id: {user}).")

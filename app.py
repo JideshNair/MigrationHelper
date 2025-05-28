@@ -6,8 +6,8 @@ import os
 # Initialize Flask app
 app = Flask(__name__)
 
-# Slack bot token (replace with your actual bot token)
-slack_token = "xoxb-8989569656288-8989910807696-Pmrp3WMplzaq26yWt72OB7D5"  # Recommended to set as environment variable
+# Slack bot token (Use environment variables for better security)
+slack_token = os.getenv("SLACK_BOT_TOKEN")  # Replace with your environment variable for security
 client = WebClient(token=slack_token)
 
 # Slack event listener endpoint
@@ -39,5 +39,7 @@ def slack_events():
 
     return jsonify({"status": "ok"})
 
+
+# Run the Flask app (on Render, this will be handled by Gunicorn)
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

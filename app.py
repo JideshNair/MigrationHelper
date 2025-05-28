@@ -25,21 +25,25 @@ def slack_events():
         event = event_data["event"]
         user_message = event.get("text")
         channel = event.get("channel")
+        user = event.get("user")
+        
+        # Ignore bot's own messages (subtype: 'bot_message')
+        if event.get("subtype") == "bot_message":
+            return jsonify({"status": "ok"})  # Don't respond if the message is from the bot
 
         # Check if the message is from the bot itself and ignore it
-        if "subtype" not in event:  # This means it's not a bot's message
-            if user_message:
-                try:
-                    print(f"Sending response to channel {channel} with message: {user_message}")  # Debug message
-                    # Send the same message back to the user in the same DM
-                    response = client.chat_postMessage(
-                        channel=channel,  # The DM channel
-                        text=f"Echo: {user_message}"  # Respond with the same message
-                    )
-                    print("Response sent:", response)  # Debug log to ensure response is sent
-                except SlackApiError as e:
-                    print(f"Error sending message: {e.response['error']}")  # Print error in case of failure
-                    return jsonify({"error": f"Slack API error: {e.response['error']}"})
+        if user_message:
+            try:
+                print(f"Sending response to channel {channel} with message: {user_message}")  # Debug message
+                # Send the same message back to the user in the same DM
+                response = client.chat_postMessage(
+                    channel=channel,  # The DM channel
+                    text=f"Echo: {user_message}"  # Respond with the same message
+                )
+                print("Response sent:", response)  # Debug log to ensure response is sent
+            except SlackApiError as e:
+                print(f"Error sending message: {e.response['error']}")  # Print error in case of failure
+                return jsonify({"error": f"Slack API error: {e.response['error']}"})
 
     return jsonify({"status": "ok"})
 

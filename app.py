@@ -7,7 +7,7 @@ import os
 app = Flask(__name__)
 
 # Slack bot token (replace with your actual bot token)
-slack_token = os.getenv('SLACK_BOT_TOKEN')  # Recommended to set as environment variable
+slack_token = "xoxb-8989569656288-8989910807696-Pmrp3WMplzaq26yWt72OB7D5"  # Recommended to set as environment variable
 client = WebClient(token=slack_token)
 
 # Slack event listener endpoint

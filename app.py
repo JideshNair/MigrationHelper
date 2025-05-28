@@ -22,6 +22,9 @@ REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
 # Set up Replicate API client
 replicate.Client(api_token=REPLICATE_API_TOKEN)
 
+# Global variable to store the last message sent
+last_message_sent = None
+
 # Function to call Replicate's model
 def generate_image_from_replicate(prompt):
     logger.info(f"Calling Replicate API with prompt: {prompt}")
@@ -61,6 +64,8 @@ def generate_image_from_replicate(prompt):
 
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
+    global last_message_sent  # Access the global variable
+    
     event_data = request.json
     logger.debug(f"Received event data: {event_data}")
 
@@ -97,20 +102,26 @@ def slack_events():
         if user_message:
             logger.info(f"Received user message: {user_message}")
             
-            # Call Replicate to generate an image from the message
-            image_url = generate_image_from_replicate(user_message)
+            # Deduplication logic: Check if the message is the same as the last sent message
+            if user_message != last_message_sent:
+                # Call Replicate to generate an image from the message
+                image_url = generate_image_from_replicate(user_message)
 
-            if image_url:
-                try:
-                    # Send the URL of the generated image back to the user in the same DM
-                    response = client.chat_postMessage(
-                        channel=channel,  # The DM channel
-                        text=f"Here is your generated image: {image_url}"  # Send the URL as the response
-                    )
-                    logger.info(f"Message sent to Slack: {response}")
-                except SlackApiError as e:
-                    logger.error(f"Error sending message: {e.response['error']}")
-                    return jsonify({"error": f"Slack API error: {e.response['error']}"})
+                if image_url:
+                    try:
+                        # Send the URL of the generated image back to the user in the same DM
+                        response = client.chat_postMessage(
+                            channel=channel,  # The DM channel
+                            text=f"Here is your generated image: {image_url}"  # Send the URL as the response
+                        )
+                        logger.info(f"Message sent to Slack: {response}")
+                        # Update the last sent message
+                        last_message_sent = user_message
+                    except SlackApiError as e:
+                        logger.error(f"Error sending message: {e.response['error']}")
+                        return jsonify({"error": f"Slack API error: {e.response['error']}"})
+            else:
+                logger.info("Message is a duplicate, skipping send.")
 
     return jsonify({"status": "ok"})
 
